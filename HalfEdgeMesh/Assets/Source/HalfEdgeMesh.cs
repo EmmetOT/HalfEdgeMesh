@@ -8,23 +8,25 @@ namespace HalfEdge {
     [Serializable]
     public class HalfEdgeMesh : ISerializationCallbackReceiver {
         [SerializeField]
-        private Vector3[] vertices;
+        private List<Vector3> vertices;
 
         [SerializeField]
-        private Vector3[] normals;
+        private List<Vector3> normals;
 
         private Dictionary<int, HalfEdge> halfEdges;
         private HashSet<int> faces;
-        
+
         [SerializeField]
         private List<SerializableHalfEdge> halfEdgesSerialized = new();
-        
+
         [SerializeField]
         private List<SerializableFace> facesSerialized = new();
 
+        private int maxEdgeIndex = 0;
+        
         public HalfEdgeMesh(Mesh mesh) {
-            vertices = mesh.vertices;
-            normals = mesh.normals;
+            vertices = new(mesh.vertices);
+            normals = new(mesh.normals);
 
             var triangles = mesh.triangles;
             halfEdges = new Dictionary<int, HalfEdge>(triangles.Length);
@@ -77,6 +79,8 @@ namespace HalfEdge {
                         Twin = -1,
                         Face = he0
                 };
+                
+                maxEdgeIndex = Mathf.Max(maxEdgeIndex, he0, he1, he2);
 
                 edgeToHalfEdge[(v2, v0)] = he2;
 
@@ -121,9 +125,148 @@ namespace HalfEdge {
             }
         }
 
-        public IEnumerable CombineCoplanarFacesEnumerable() {
-            //Debug.Log($"Starting. There are now {faces.Count} faces.");
+        public void Bisect(Plane plane, List<(Vector3? a, Vector3? b)> result) {
+            foreach (var face in faces) {
+                BisectFace(plane, face, out var a, out var b);
+                if (a.HasValue || b.HasValue) {
+                    result.Add((a, b));
+                }
+            }
+        }
+
+        /// If the face is intersected by the plane, bisect it, creating two new faces.
+        private void BisectFace(Plane plane, int faceIndex, out Vector3? a, out Vector3? b) {
+            var faceNormal = GetFaceNormal(faceIndex);
+
+            a = null;
+            b = null;
+
+            Vector3? aNormal = null;
+            Vector3? bNormal = null;
+
+            // If the face is coplanar with the plane, don't bisect it.
+            if (Vector3.Dot(faceNormal, plane.normal) > 0.999f) {
+                Debug.Log($"Face {faceIndex} is coplanar with the plane. Skipping.");
+                return;
+            }
+
+            var lastEdgeBefore = -1;
+            var firstEdgeAfter = -1;
             
+            foreach (var edge in EnumerateFaceEdges(faceIndex)) {
+                var nextEdge = halfEdges[edge].Next;
+
+                var thisVertex = vertices[halfEdges[edge].Vertex];
+                var nextVertex = vertices[halfEdges[nextEdge].Vertex];
+
+                if (!plane.TryIntersect(thisVertex, nextVertex, out var pointOfIntersection, out var t)) {
+                    continue;
+                }
+
+                var thisNormal = normals[halfEdges[edge].Vertex];
+                var nextNormal = normals[halfEdges[nextEdge].Vertex];
+
+                if (a == null) {
+                    a = pointOfIntersection;
+                    aNormal = Vector3.Lerp(thisNormal, nextNormal, t);
+                    lastEdgeBefore = edge;
+                } else {
+                    b = pointOfIntersection;
+                    bNormal = Vector3.Lerp(thisNormal, nextNormal, t);
+                    firstEdgeAfter = nextEdge;
+                    break;
+                }
+            }
+
+            if (a == null || b == null) {
+                return;
+            }
+
+            // The face before the first intersection now needs to connect to a new vertex, representing POI a.
+            // The connections after that remain, until we reach the last edge seen, which now needs to connect to POI b.
+            // POI b connects back to POI a.
+            // vertices.Add(a.Value);
+            // normals.Add(aNormal.Value);
+            // var aVertexIndex = vertices.Count - 1;
+            // var aHalfEdgeIndex = ++maxEdgeIndex;
+            //
+            // vertices.Add(b.Value);
+            // normals.Add(bNormal.Value);
+            // var bVertexIndex = vertices.Count - 1;
+            // var bHalfEdgeIndex = ++maxEdgeIndex;
+            //
+            // var newFaceIndex = aHalfEdgeIndex;
+            // var aToBEdgeIndex = ++maxEdgeIndex;
+            // var bToAEdgeIndex = ++maxEdgeIndex;
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            // Start by modifying the existing half edges
+            // TODO: Figure out how to get the twin here. Probably also need to update the twin.
+            // var lastBefore = halfEdges[lastEdgeBefore];
+            // var oldNext = lastBefore.Next;
+            // halfEdges[lastEdgeBefore] = new HalfEdge { Face = lastBefore.Face, Next = aHalfEdgeIndex, Previous = lastBefore.Previous, Vertex = lastBefore.Vertex, Twin = lastBefore.Twin};
+            // halfEdges.Add(aHalfEdgeIndex, new HalfEdge { Face = lastBefore.Face, Next = bHalfEdgeIndex, Previous = lastEdgeBefore, Vertex = aVertexIndex, Twin = bToAEdgeIndex });
+            // halfEdges.Add(bHalfEdgeIndex, new HalfEdge { Face = lastBefore.Face, Next = firstEdgeAfter, Previous = aHalfEdgeIndex, Vertex = bVertexIndex, Twin = bToAEdgeIndex });
+            //
+            // var firstAfter = halfEdges[firstEdgeAfter];
+            // var oldPrevious = firstAfter.Previous;
+            // halfEdges[firstEdgeAfter] = new HalfEdge { Face = firstAfter.Face, Next = firstAfter.Next, Previous = bHalfEdgeIndex, Vertex = firstAfter.Vertex, Twin = firstAfter.Twin};
+            //
+            // Add the half edges representing the other half of the bisected edges
+            // halfEdges.Add(aHalfEdgeIndex, new HalfEdge { Face = newFaceIndex, Next = oldNext, Previous = lastEdgeBefore, Vertex = aVertexIndex, Twin = -1 });
+            // halfEdges.Add(bHalfEdgeIndex, new HalfEdge { Face = newFaceIndex, Next = firstEdgeAfter, Previous = oldPrevious, Vertex = bVertexIndex, Twin = -1 });
+            //
+            // Add the edges representing the bisection itself.
+
+            
+        }
+
+        /// Given an edge index, split it into two edges, with the new vertex in between.
+        public void SplitEdge(int halfEdgeIndex, Vector3 newVertex, Vector3 newNormal) {
+            vertices.Add(newVertex);
+            normals.Add(newNormal);
+            var newVertexIndex = vertices.Count - 1;
+            
+            var newEdgeIndex = ++maxEdgeIndex;
+                
+            var he = halfEdges[halfEdgeIndex];
+
+            // Turn the existing half edge into the first half of the new split edge
+            halfEdges[halfEdgeIndex] = new HalfEdge { Face = he.Face, Next = newEdgeIndex, Previous = he.Previous, Vertex = he.Vertex, Twin = he.Twin };
+            
+            // Add the second half of the new split edge, which is on the "new face" side
+            var newEdge = new HalfEdge { Face = newEdgeIndex, Next = he.Next, Previous = halfEdgeIndex, Vertex = newVertexIndex, Twin = -1 };
+            halfEdges.Add(newEdgeIndex, newEdge);
+            
+            var next = halfEdges[he.Next];
+            halfEdges[he.Next] = new HalfEdge { Face = next.Face, Next = next.Next, Previous = newEdgeIndex, Vertex = next.Vertex, Twin = next.Twin };
+
+            if (he.Twin != -1) {
+                var twin = halfEdges[he.Twin];
+                halfEdges[he.Twin] = new HalfEdge { Face = twin.Face, Next = twin.Next, Previous = newEdgeIndex, Vertex = newVertexIndex, Twin = halfEdgeIndex };
+                
+                // Add the second half of the new split edge, which is on the "new face" side
+                var newTwinIndex = ++maxEdgeIndex;
+                halfEdges[newEdgeIndex] = new HalfEdge { Face = newEdge.Face, Next = newEdge.Next, Previous = newEdge.Previous, Vertex = newEdge.Vertex, Twin = newTwinIndex };
+                halfEdges.Add(newTwinIndex, new HalfEdge { Face = twin.Face, Next = he.Twin, Previous = twin.Previous, Vertex = newVertexIndex, Twin = newEdgeIndex });
+            }
+        }
+        
+        public IEnumerable CombineCoplanarFacesEnumerable() {
             // Iterate over all half-edges. If we find and remove a pair of coplanar faces, we start again, and keep going until we find no more.
             bool startOver;
             var count = 0;
@@ -149,7 +292,7 @@ namespace HalfEdge {
                 Debug.LogError("Too many iterations. Aborting.");
             }
         }
-        
+
         public void CombineCoplanarFaces() {
             // Iterate over all half-edges. If we find and remove a pair of coplanar faces, we start again, and keep going until we find no more.
             bool startOver;
@@ -177,22 +320,30 @@ namespace HalfEdge {
             if (faceIndexA == faceIndexB) {
                 return true;
             }
-            
+
             var normal1 = GetFaceNormal(faceIndexA);
             var normal2 = GetFaceNormal(faceIndexB);
-            
+
             return Vector3.Dot(normal1, normal2) > 0.999f;
         }
-        
+
         private bool IsCoplanar(int faceIndex, Vector3 normal) {
             var faceNormal = GetFaceNormal(faceIndex);
             return Vector3.Dot(faceNormal, normal) > 0.999f;
         }
 
+        private IEnumerable<int> EnumerateFaceEdges(int faceIndex) {
+            var currentIndex = faceIndex;
+            do {
+                yield return currentIndex;
+                currentIndex = halfEdges[currentIndex].Next;
+            } while (currentIndex != faceIndex);
+        }
+
         private void CollapseEdge(int id) {
             var heA = halfEdges[id];
             var heB = halfEdges[heA.Twin];
-            
+
             var oldFaceA = heA.Face;
             var oldFaceB = heB.Face;
 
@@ -208,15 +359,15 @@ namespace HalfEdge {
             while (currentIndex == id || currentIndex == heA.Twin || !IsCoplanar(currentIndex, oldNormal)) {
                 currentIndex = halfEdges[currentIndex].Next;
             }
-            
+
             halfEdges.Remove(id);
             halfEdges.Remove(heA.Twin);
-            
+
             // Update the face indices of all half-edges in the face.
             var faceIndex = currentIndex;
             do {
                 var old = halfEdges[currentIndex];
-                
+
                 halfEdges[currentIndex] = new HalfEdge {
                         Vertex = old.Vertex,
                         Next = old.Next,
@@ -224,7 +375,7 @@ namespace HalfEdge {
                         Twin = old.Twin,
                         Face = faceIndex
                 };
-                
+
                 currentIndex = old.Next;
             } while (currentIndex != faceIndex);
 
@@ -234,7 +385,7 @@ namespace HalfEdge {
 
             // Add the new face index
             faces.Add(faceIndex);
-            
+
             return;
 
             void SetNext(int index, int next) {
@@ -263,17 +414,17 @@ namespace HalfEdge {
             var he0 = halfEdges[faceIndex];
             var he1 = halfEdges[he0.Next];
             var he2 = halfEdges[he1.Next];
-            
+
             var v0 = vertices[he0.Vertex];
             var v1 = vertices[he1.Vertex];
             var v2 = vertices[he2.Vertex];
-            
+
             // If he2 is colinear with he0 and he1, we need to find a new he2
             while (Vector3.Cross(v1 - v0, v2 - v0).sqrMagnitude < 0.0001f) {
                 he2 = halfEdges[he2.Next];
                 v2 = vertices[he2.Vertex];
             }
-            
+
             return Vector3.Cross(v1 - v0, v2 - v0).normalized;
         }
 
@@ -331,15 +482,14 @@ namespace HalfEdge {
                 } while (currentIndex != faceIndex && count++ < 100);
             } catch (KeyNotFoundException e) {
                 Debug.LogError($"Face {faceIndex} does not exist. Aborting drawing.");
-                
+
                 foreach (var (key, value) in halfEdges) {
                     Debug.Log($"Half edge {key}: {value.Vertex} {value.Previous} {value.Next} {value.Twin} {value.Face}");
                 }
-                
+
                 return;
             }
 
-            
             if (count >= 100) {
                 Debug.LogError($"Face {faceIndex} has more than 100 vertices, or does not loop. Aborting drawing.");
                 return;
@@ -360,10 +510,10 @@ namespace HalfEdge {
 
                 DrawHalfArrow(from, to, centroid, normals[he.Vertex], fromLabel, toLabel);
             }
-            
+
             if (labelFaces) {
                 Utils.Label(centroid, faceIndex, col:Color.black);
-                
+
                 Handles.color = color;
                 Handles.DrawAAPolyLine(6f, centroid, centroid + GetFaceNormal(faceIndex));
             }
@@ -381,7 +531,7 @@ namespace HalfEdge {
 
             var perpendicular = GetPerpendicularVector(to, from, centroid);
             var basePoint = to - arrowScale * (to - from).normalized;
-            
+
             Handles.DrawAAPolyLine(6f, from, to);
             Handles.DrawAAConvexPolygon(to, basePoint, basePoint + arrowScale * perpendicular * 0.5f);
 
@@ -421,7 +571,7 @@ namespace HalfEdge {
             facesSerialized.Clear();
             foreach (var face in faces) {
                 facesSerialized.Add(new SerializableFace(face));
-                
+
                 // Serialize the half edges by face
                 var currentIndex = face;
                 do {
@@ -431,7 +581,7 @@ namespace HalfEdge {
                 } while (currentIndex != face);
             }
         }
-        
+
         public void OnBeforeSerialize() {
             UpdateSerialization();
         }
@@ -441,20 +591,20 @@ namespace HalfEdge {
             foreach (var pair in halfEdgesSerialized) {
                 halfEdges[pair.Key] = pair.Value;
             }
-            
+
             faces = new HashSet<int>(facesSerialized.Count);
             foreach (var face in facesSerialized) {
                 faces.Add(face.Index);
             }
         }
     }
-    
+
     [Serializable]
     public struct SerializableHalfEdge {
         public string Name;
         public int Key;
         public HalfEdge Value;
-        
+
         public SerializableHalfEdge(int key, HalfEdge value) {
             Name = $"{key}->{value.Next}";
             Key = key;
@@ -466,7 +616,7 @@ namespace HalfEdge {
     public struct SerializableFace {
         public string Name;
         public int Index;
-        
+
         public SerializableFace(int index) {
             Name = index.ToString();
             Index = index;

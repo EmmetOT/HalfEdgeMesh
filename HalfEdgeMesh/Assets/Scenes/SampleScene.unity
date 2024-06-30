@@ -587,151 +587,108 @@ MonoBehaviour:
     - {x: 0, y: 1, z: 0}
     - {x: 0, y: 1, z: 0}
     halfEdgesSerialized:
-    - Key: 0
+    - Name: 35->17
+      Key: 35
       Value:
-        Vertex: 0
-        Previous: 2
-        Next: 18
+        Vertex: 11
+        Previous: 53
+        Next: 17
         Twin: -1
-        Face: 25
-    - Key: 2
+        Face: 35
+    - Name: 17->14
+      Key: 17
       Value:
-        Vertex: 1
-        Previous: 8
-        Next: 0
+        Vertex: 7
+        Previous: 35
+        Next: 14
         Twin: -1
-        Face: 25
-    - Key: 8
-      Value:
-        Vertex: 2
-        Previous: 14
-        Next: 2
-        Twin: -1
-        Face: 25
-    - Key: 14
+        Face: 35
+    - Name: 14->8
+      Key: 14
       Value:
         Vertex: 3
         Previous: 17
         Next: 8
         Twin: -1
-        Face: 25
-    - Key: 17
+        Face: 35
+    - Name: 8->2
+      Key: 8
       Value:
-        Vertex: 7
-        Previous: 31
-        Next: 14
+        Vertex: 2
+        Previous: 14
+        Next: 2
         Twin: -1
-        Face: 25
-    - Key: 18
+        Face: 35
+    - Name: 2->0
+      Key: 2
+      Value:
+        Vertex: 1
+        Previous: 8
+        Next: 0
+        Twin: -1
+        Face: 35
+    - Name: 0->18
+      Key: 0
+      Value:
+        Vertex: 0
+        Previous: 2
+        Next: 18
+        Twin: -1
+        Face: 35
+    - Name: 18->36
+      Key: 18
       Value:
         Vertex: 4
         Previous: 0
         Next: 36
         Twin: -1
-        Face: 25
-    - Key: 25
-      Value:
-        Vertex: 9
-        Previous: 37
-        Next: 30
-        Twin: 27
-        Face: 25
-    - Key: 27
-      Value:
-        Vertex: 6
-        Previous: 29
-        Next: 39
-        Twin: 25
         Face: 35
-    - Key: 29
-      Value:
-        Vertex: 10
-        Previous: 33
-        Next: 27
-        Twin: 30
-        Face: 35
-    - Key: 30
-      Value:
-        Vertex: 6
-        Previous: 25
-        Next: 31
-        Twin: 29
-        Face: 25
-    - Key: 31
-      Value:
-        Vertex: 10
-        Previous: 30
-        Next: 17
-        Twin: 33
-        Face: 25
-    - Key: 33
-      Value:
-        Vertex: 7
-        Previous: 35
-        Next: 29
-        Twin: 31
-        Face: 35
-    - Key: 35
-      Value:
-        Vertex: 11
-        Previous: 53
-        Next: 33
-        Twin: -1
-        Face: 35
-    - Key: 36
+    - Name: 36->40
+      Key: 36
       Value:
         Vertex: 8
         Previous: 18
-        Next: 37
+        Next: 40
         Twin: -1
-        Face: 25
-    - Key: 37
+        Face: 35
+    - Name: 40->46
+      Key: 40
       Value:
         Vertex: 12
         Previous: 36
-        Next: 25
-        Twin: 39
-        Face: 25
-    - Key: 39
-      Value:
-        Vertex: 9
-        Previous: 27
-        Next: 40
-        Twin: 37
-        Face: 35
-    - Key: 40
-      Value:
-        Vertex: 12
-        Previous: 39
         Next: 46
         Twin: -1
         Face: 35
-    - Key: 46
+    - Name: 46->52
+      Key: 46
       Value:
         Vertex: 13
         Previous: 40
         Next: 52
         Twin: -1
         Face: 35
-    - Key: 52
+    - Name: 52->53
+      Key: 52
       Value:
         Vertex: 14
         Previous: 46
         Next: 53
         Twin: -1
         Face: 35
-    - Key: 53
+    - Name: 53->35
+      Key: 53
       Value:
         Vertex: 15
         Previous: 52
         Next: 35
         Twin: -1
         Face: 35
-    facesSerialized: 1900000023000000
-    halfEdgesInFaceToDraw: 23000000210000001d0000001b00000027000000280000002e0000003400000035000000
-  testFace: 9
+    facesSerialized:
+    - Name: 35
+      Index: 35
+    halfEdgesInFaceToDraw: 23000000110000000e0000000800000002000000000000001200000024000000280000002e0000003400000035000000
   labelHalfEdges: 1
-  labelFaces: 1
+  labelFaces: 0
 --- !u!4 &825876907
 Transform:
   m_ObjectHideFlags: 0
@@ -1102,7 +1059,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &2106269765
 Transform:
   m_ObjectHideFlags: 0
