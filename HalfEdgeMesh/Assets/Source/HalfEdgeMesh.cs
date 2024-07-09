@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 
@@ -33,6 +34,39 @@ namespace HalfEdge {
             faces = new HashSet<int>(mesh.triangles.Length / 3);
 
             InitializeHalfEdges(mesh);
+        }
+
+        /// Get the normal of the face with the given index.
+        public Vector3 GetFaceNormal(int faceIndex) {
+            var he0 = halfEdges[faceIndex];
+            var he1 = halfEdges[he0.Next];
+            var he2 = halfEdges[he1.Next];
+
+            var v0 = vertices[he0.Vertex];
+            var v1 = vertices[he1.Vertex];
+            var v2 = vertices[he2.Vertex];
+
+            // If he2 is colinear with he0 and he1, we need to find a new he2
+            while (Vector3.Cross(v1 - v0, v2 - v0).sqrMagnitude < 0.0001f) {
+                he2 = halfEdges[he2.Next];
+                v2 = vertices[he2.Vertex];
+            }
+
+            return Vector3.Cross(v1 - v0, v2 - v0).normalized;
+        }
+
+        /// Enumerate the face indices of all faces adjacent to the face with the given index.
+        public IEnumerable<int> GetAdjacentFaces(int faceIndex) {
+            var currentIndex = faceIndex;
+            do {
+                var he = halfEdges[currentIndex];
+
+                if (he.Twin != -1) {
+                    yield return halfEdges[he.Twin].Face;
+                }
+
+                currentIndex = he.Next;
+            } while (currentIndex != faceIndex);
         }
 
         // Create a half-edge for each edge in the mesh.
@@ -103,145 +137,106 @@ namespace HalfEdge {
                     SetTwins(i, twinIndex);
                 }
             }
-
-            void SetTwins(int indexA, int indexB) {
-                var heA = halfEdges[indexA];
-                var heB = halfEdges[indexB];
-
-                halfEdges[indexA] = new HalfEdge {
-                        Vertex = heA.Vertex,
-                        Next = heA.Next,
-                        Previous = heA.Previous,
-                        Twin = indexB,
-                        Face = heA.Face
-                };
-                halfEdges[indexB] = new HalfEdge {
-                        Vertex = heB.Vertex,
-                        Next = heB.Next,
-                        Previous = heB.Previous,
-                        Twin = indexA,
-                        Face = heB.Face
-                };
-            }
         }
 
         public void Bisect(Plane plane, List<(Vector3? a, Vector3? b)> result) {
+            List<int> facesToAdd = new();
             foreach (var face in faces) {
-                BisectFace(plane, face, out var a, out var b);
+                BisectFace(plane, face, facesToAdd, out var a, out var b);
                 if (a.HasValue || b.HasValue) {
                     result.Add((a, b));
                 }
             }
+
+            faces.AddRange(facesToAdd);
         }
 
         /// If the face is intersected by the plane, bisect it, creating two new faces.
-        private void BisectFace(Plane plane, int faceIndex, out Vector3? a, out Vector3? b) {
-            var faceNormal = GetFaceNormal(faceIndex);
-
-            a = null;
-            b = null;
+        private void BisectFace(Plane plane, int faceIndex, List<int> facesToAdd, out Vector3? aVertex, out Vector3? bVertex) {
+            aVertex = null;
+            bVertex = null;
 
             Vector3? aNormal = null;
             Vector3? bNormal = null;
 
             // If the face is coplanar with the plane, don't bisect it.
+            var faceNormal = GetFaceNormal(faceIndex);
             if (Vector3.Dot(faceNormal, plane.normal) > 0.999f) {
-                Debug.Log($"Face {faceIndex} is coplanar with the plane. Skipping.");
                 return;
             }
 
-            var lastEdgeBefore = -1;
-            var firstEdgeAfter = -1;
+            var edgeIndexA = -1;
+            var edgeIndexB = -1;
             
             foreach (var edge in EnumerateFaceEdges(faceIndex)) {
-                var nextEdge = halfEdges[edge].Next;
+                var thisEdge = halfEdges[edge];
+                var nextEdge = halfEdges[thisEdge.Next];
 
-                var thisVertex = vertices[halfEdges[edge].Vertex];
-                var nextVertex = vertices[halfEdges[nextEdge].Vertex];
-
-                if (!plane.TryIntersect(thisVertex, nextVertex, out var pointOfIntersection, out var t)) {
+                if (!plane.TryIntersect(vertices[thisEdge.Vertex], vertices[nextEdge.Vertex], out var pointOfIntersection, out var t)) {
                     continue;
                 }
 
-                var thisNormal = normals[halfEdges[edge].Vertex];
-                var nextNormal = normals[halfEdges[nextEdge].Vertex];
-
-                if (a == null) {
-                    a = pointOfIntersection;
-                    aNormal = Vector3.Lerp(thisNormal, nextNormal, t);
-                    lastEdgeBefore = edge;
+                if (aVertex == null) {
+                    aVertex = pointOfIntersection;
+                    aNormal = Vector3.Lerp(normals[thisEdge.Vertex], normals[nextEdge.Vertex], t);
+                    edgeIndexA = edge;
                 } else {
-                    b = pointOfIntersection;
-                    bNormal = Vector3.Lerp(thisNormal, nextNormal, t);
-                    firstEdgeAfter = nextEdge;
+                    bVertex = pointOfIntersection;
+                    bNormal = Vector3.Lerp(normals[thisEdge.Vertex], normals[nextEdge.Vertex], t);
+                    edgeIndexB = edge;
                     break;
                 }
             }
 
-            if (a == null || b == null) {
+            if (aVertex == null || bVertex == null) {
                 return;
             }
+            
+            // Split the face at the points of intersection.
+            SplitEdge(edgeIndexA, aVertex.Value, aNormal!.Value, out var edgeIndexC, out var vertexIndexC, out _);
+            SplitEdge(edgeIndexB, bVertex.Value, bNormal!.Value, out var edgeIndexD, out var vertexIndexD, out _);
+            
+            var heC = halfEdges[edgeIndexC];
+            var heD = halfEdges[edgeIndexD];
+            
+            SetNext(edgeIndexC, edgeIndexD);
+            
+            // Because we're splitting faces, we need two new half edges for each point of intersection, not just one.
+            var edgeIndexE = ++maxEdgeIndex;
+            var edgeIndexF = ++maxEdgeIndex;
+            
+            halfEdges.Add(edgeIndexE, new HalfEdge { Vertex = vertexIndexC, Next = heC.Next, Previous = edgeIndexF, Twin = -1, Face = edgeIndexE });
+            SetNext(edgeIndexE, heC.Next);
+            
+            halfEdges.Add(edgeIndexF, new HalfEdge { Vertex = vertexIndexD, Next = edgeIndexE, Previous = heD.Previous, Twin = -1, Face = edgeIndexE });
+            SetTwins(edgeIndexF, edgeIndexC);
+            SetNext(edgeIndexF, edgeIndexE);
+            SetNext(heD.Previous, edgeIndexF);
 
-            // The face before the first intersection now needs to connect to a new vertex, representing POI a.
-            // The connections after that remain, until we reach the last edge seen, which now needs to connect to POI b.
-            // POI b connects back to POI a.
-            // vertices.Add(a.Value);
-            // normals.Add(aNormal.Value);
-            // var aVertexIndex = vertices.Count - 1;
-            // var aHalfEdgeIndex = ++maxEdgeIndex;
-            //
-            // vertices.Add(b.Value);
-            // normals.Add(bNormal.Value);
-            // var bVertexIndex = vertices.Count - 1;
-            // var bHalfEdgeIndex = ++maxEdgeIndex;
-            //
-            // var newFaceIndex = aHalfEdgeIndex;
-            // var aToBEdgeIndex = ++maxEdgeIndex;
-            // var bToAEdgeIndex = ++maxEdgeIndex;
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            // Start by modifying the existing half edges
-            // TODO: Figure out how to get the twin here. Probably also need to update the twin.
-            // var lastBefore = halfEdges[lastEdgeBefore];
-            // var oldNext = lastBefore.Next;
-            // halfEdges[lastEdgeBefore] = new HalfEdge { Face = lastBefore.Face, Next = aHalfEdgeIndex, Previous = lastBefore.Previous, Vertex = lastBefore.Vertex, Twin = lastBefore.Twin};
-            // halfEdges.Add(aHalfEdgeIndex, new HalfEdge { Face = lastBefore.Face, Next = bHalfEdgeIndex, Previous = lastEdgeBefore, Vertex = aVertexIndex, Twin = bToAEdgeIndex });
-            // halfEdges.Add(bHalfEdgeIndex, new HalfEdge { Face = lastBefore.Face, Next = firstEdgeAfter, Previous = aHalfEdgeIndex, Vertex = bVertexIndex, Twin = bToAEdgeIndex });
-            //
-            // var firstAfter = halfEdges[firstEdgeAfter];
-            // var oldPrevious = firstAfter.Previous;
-            // halfEdges[firstEdgeAfter] = new HalfEdge { Face = firstAfter.Face, Next = firstAfter.Next, Previous = bHalfEdgeIndex, Vertex = firstAfter.Vertex, Twin = firstAfter.Twin};
-            //
-            // Add the half edges representing the other half of the bisected edges
-            // halfEdges.Add(aHalfEdgeIndex, new HalfEdge { Face = newFaceIndex, Next = oldNext, Previous = lastEdgeBefore, Vertex = aVertexIndex, Twin = -1 });
-            // halfEdges.Add(bHalfEdgeIndex, new HalfEdge { Face = newFaceIndex, Next = firstEdgeAfter, Previous = oldPrevious, Vertex = bVertexIndex, Twin = -1 });
-            //
-            // Add the edges representing the bisection itself.
+            facesToAdd.Add(edgeIndexE);
 
-            
+            // Set all the edges following D to the new face
+            var currentIndex = heC.Next;
+            do {
+                var he = halfEdges[currentIndex];
+                halfEdges[currentIndex] = new HalfEdge { Face = edgeIndexE, Next = he.Next, Previous = he.Previous, Vertex = he.Vertex, Twin = he.Twin };
+                currentIndex = he.Next;
+            } while (currentIndex != edgeIndexE);
         }
 
         /// Given an edge index, split it into two edges, with the new vertex in between.
         public void SplitEdge(int halfEdgeIndex, Vector3 newVertex, Vector3 newNormal) {
+            SplitEdge(halfEdgeIndex, newVertex, newNormal, out _, out _, out _);
+        }
+        
+        /// Given an edge index, split it into two edges, with the new vertex in between.
+        public void SplitEdge(int halfEdgeIndex, Vector3 newVertex, Vector3 newNormal, out int newEdgeIndex, out int newVertexIndex, out int newTwinIndex) {
             vertices.Add(newVertex);
             normals.Add(newNormal);
-            var newVertexIndex = vertices.Count - 1;
+            newVertexIndex = vertices.Count - 1;
             
-            var newEdgeIndex = ++maxEdgeIndex;
+            newEdgeIndex = ++maxEdgeIndex;
+            newTwinIndex = -1;
                 
             var he = halfEdges[halfEdgeIndex];
 
@@ -249,50 +244,28 @@ namespace HalfEdge {
             halfEdges[halfEdgeIndex] = new HalfEdge { Face = he.Face, Next = newEdgeIndex, Previous = he.Previous, Vertex = he.Vertex, Twin = he.Twin };
             
             // Add the second half of the new split edge, which is on the "new face" side
-            var newEdge = new HalfEdge { Face = newEdgeIndex, Next = he.Next, Previous = halfEdgeIndex, Vertex = newVertexIndex, Twin = -1 };
+            var newEdge = new HalfEdge { Face = he.Face/*newEdgeIndex*/, Next = he.Next, Previous = halfEdgeIndex, Vertex = newVertexIndex, Twin = -1 };
             halfEdges.Add(newEdgeIndex, newEdge);
-            
-            var next = halfEdges[he.Next];
-            halfEdges[he.Next] = new HalfEdge { Face = next.Face, Next = next.Next, Previous = newEdgeIndex, Vertex = next.Vertex, Twin = next.Twin };
 
+            var next = halfEdges[he.Next];
+            halfEdges[he.Next] = new HalfEdge { Face = he.Face/*next.Face*/, Next = next.Next, Previous = newEdgeIndex, Vertex = next.Vertex, Twin = next.Twin };
+
+            // If this half edge had a twin, we do something similar for it.
             if (he.Twin != -1) {
                 var twin = halfEdges[he.Twin];
-                halfEdges[he.Twin] = new HalfEdge { Face = twin.Face, Next = twin.Next, Previous = newEdgeIndex, Vertex = newVertexIndex, Twin = halfEdgeIndex };
+
+                newTwinIndex = ++maxEdgeIndex;
+                halfEdges.Add(newTwinIndex, new HalfEdge { Face = twin.Face, Next = twin.Next, Previous = he.Twin, Vertex = newVertexIndex, Twin = halfEdgeIndex });
+
+                halfEdges[he.Twin] = new HalfEdge { Face = twin.Face, Next = newTwinIndex, Previous = twin.Previous, Vertex = twin.Vertex, Twin = newEdgeIndex };
+
+                he = halfEdges[halfEdgeIndex];
+                halfEdges[halfEdgeIndex] = new HalfEdge { Face = twin.Face/*he.Face*/, Next = he.Next, Previous = he.Previous, Vertex = he.Vertex, Twin = newTwinIndex };
                 
-                // Add the second half of the new split edge, which is on the "new face" side
-                var newTwinIndex = ++maxEdgeIndex;
-                halfEdges[newEdgeIndex] = new HalfEdge { Face = newEdge.Face, Next = newEdge.Next, Previous = newEdge.Previous, Vertex = newEdge.Vertex, Twin = newTwinIndex };
-                halfEdges.Add(newTwinIndex, new HalfEdge { Face = twin.Face, Next = he.Twin, Previous = twin.Previous, Vertex = newVertexIndex, Twin = newEdgeIndex });
+                halfEdges[newEdgeIndex] = new HalfEdge { Face = twin.Face/*newEdge.Face*/, Next = newEdge.Next, Previous = newEdge.Previous, Vertex = newEdge.Vertex, Twin = he.Twin };
             }
         }
         
-        public IEnumerable CombineCoplanarFacesEnumerable() {
-            // Iterate over all half-edges. If we find and remove a pair of coplanar faces, we start again, and keep going until we find no more.
-            bool startOver;
-            var count = 0;
-            do {
-                count++;
-                startOver = false;
-                foreach (var (id, he) in halfEdges) {
-                    if (he.Twin != -1) {
-                        //Debug.Log($"Checking the half edge {id}->{he.Next}, twin {he.Twin}->{halfEdges[he.Twin].Next}");
-                        if (IsCoplanar(he.Face, halfEdges[he.Twin].Face)) {
-                            //Debug.Log($"Collapsing edge {id}");
-                            CollapseEdge(id);
-                            startOver = true;
-                            UpdateSerialization();
-                            yield return null;
-                            break;
-                        }
-                    }
-                }
-            } while (startOver && count < 1000);
-
-            if (count >= 1000) {
-                Debug.LogError("Too many iterations. Aborting.");
-            }
-        }
-
         public void CombineCoplanarFaces() {
             // Iterate over all half-edges. If we find and remove a pair of coplanar faces, we start again, and keep going until we find no more.
             bool startOver;
@@ -385,63 +358,48 @@ namespace HalfEdge {
 
             // Add the new face index
             faces.Add(faceIndex);
-
-            return;
-
-            void SetNext(int index, int next) {
-                var he = halfEdges[index];
-                halfEdges[index] = new HalfEdge {
-                        Vertex = he.Vertex,
-                        Next = next,
-                        Previous = he.Previous,
-                        Twin = he.Twin,
-                        Face = he.Face
-                };
-
-                he = halfEdges[next];
-                halfEdges[next] = new HalfEdge {
-                        Vertex = he.Vertex,
-                        Next = he.Next,
-                        Previous = index,
-                        Twin = he.Twin,
-                        Face = he.Face
-                };
-            }
         }
 
-        /// Get the normal of the face with the given index.
-        public Vector3 GetFaceNormal(int faceIndex) {
-            var he0 = halfEdges[faceIndex];
-            var he1 = halfEdges[he0.Next];
-            var he2 = halfEdges[he1.Next];
+        private void SetTwins(int indexA, int indexB) {
+            var heA = halfEdges[indexA];
+            var heB = halfEdges[indexB];
 
-            var v0 = vertices[he0.Vertex];
-            var v1 = vertices[he1.Vertex];
-            var v2 = vertices[he2.Vertex];
-
-            // If he2 is colinear with he0 and he1, we need to find a new he2
-            while (Vector3.Cross(v1 - v0, v2 - v0).sqrMagnitude < 0.0001f) {
-                he2 = halfEdges[he2.Next];
-                v2 = vertices[he2.Vertex];
-            }
-
-            return Vector3.Cross(v1 - v0, v2 - v0).normalized;
+            halfEdges[indexA] = new HalfEdge {
+                    Vertex = heA.Vertex,
+                    Next = heA.Next,
+                    Previous = heA.Previous,
+                    Twin = indexB,
+                    Face = heA.Face
+            };
+            halfEdges[indexB] = new HalfEdge {
+                    Vertex = heB.Vertex,
+                    Next = heB.Next,
+                    Previous = heB.Previous,
+                    Twin = indexA,
+                    Face = heB.Face
+            };
         }
+        
+        private void SetNext(int index, int next) {
+            var he = halfEdges[index];
+            halfEdges[index] = new HalfEdge {
+                    Vertex = he.Vertex,
+                    Next = next,
+                    Previous = he.Previous,
+                    Twin = he.Twin,
+                    Face = he.Face
+            };
 
-        /// Enumerate the face indices of all faces adjacent to the face with the given index.
-        public IEnumerable<int> GetAdjacentFaces(int faceIndex) {
-            var currentIndex = faceIndex;
-            do {
-                var he = halfEdges[currentIndex];
-
-                if (he.Twin != -1) {
-                    yield return halfEdges[he.Twin].Face;
-                }
-
-                currentIndex = he.Next;
-            } while (currentIndex != faceIndex);
+            he = halfEdges[next];
+            halfEdges[next] = new HalfEdge {
+                    Vertex = he.Vertex,
+                    Next = he.Next,
+                    Previous = index,
+                    Twin = he.Twin,
+                    Face = he.Face
+            };
         }
-
+        
         public void DrawGizmos(bool labelHalfEdges = false, bool labelFaces = false) {
 #if UNITY_EDITOR
             if (halfEdges == null) {
@@ -472,23 +430,13 @@ namespace HalfEdge {
             var centroid = Vector3.zero;
 
             var count = 0;
-            try {
-                var currentIndex = faceIndex;
-                do {
-                    var he = halfEdges[currentIndex];
-                    halfEdgesInFaceToDraw.Add(currentIndex);
-                    centroid += vertices[he.Vertex];
-                    currentIndex = he.Next;
-                } while (currentIndex != faceIndex && count++ < 100);
-            } catch (KeyNotFoundException e) {
-                Debug.LogError($"Face {faceIndex} does not exist. Aborting drawing.");
-
-                foreach (var (key, value) in halfEdges) {
-                    Debug.Log($"Half edge {key}: {value.Vertex} {value.Previous} {value.Next} {value.Twin} {value.Face}");
-                }
-
-                return;
-            }
+            var currentIndex = faceIndex;
+            do {
+                var he = halfEdges[currentIndex];
+                halfEdgesInFaceToDraw.Add(currentIndex);
+                centroid += vertices[he.Vertex];
+                currentIndex = he.Next;
+            } while (currentIndex != faceIndex && count++ < 100);
 
             if (count >= 100) {
                 Debug.LogError($"Face {faceIndex} has more than 100 vertices, or does not loop. Aborting drawing.");
@@ -524,10 +472,11 @@ namespace HalfEdge {
         private void DrawHalfArrow(Vector3 from, Vector3 to, Vector3 centroid, Vector3 normal, int? fromLabel = null, int? toLabel = null) {
             const float arrowScale = 0.06f;
             const float offset = 0.05f;
+            const float verticalOffset = 0.001f;
 
             // Move both from and to a tiny bit towards the centroid
-            from = Vector3.MoveTowards(from, centroid, offset);
-            to = Vector3.MoveTowards(to, centroid, offset);
+            from = Vector3.MoveTowards(from, centroid, offset) + normal * verticalOffset;
+            to = Vector3.MoveTowards(to, centroid, offset) + normal * verticalOffset;
 
             var perpendicular = GetPerpendicularVector(to, from, centroid);
             var basePoint = to - arrowScale * (to - from).normalized;

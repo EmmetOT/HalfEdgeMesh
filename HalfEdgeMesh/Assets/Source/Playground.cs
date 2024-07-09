@@ -49,13 +49,8 @@ namespace HalfEdge {
         
         [Button("Test")]
         public void Test() {
-            combineCoplanarFacesEnumerator = null;
-            count = 0;
             halfEdgeMesh = new HalfEdgeMesh(meshFilter.sharedMesh);
         }
-
-        private IEnumerator combineCoplanarFacesEnumerator;
-        private int count = 0;
 
         private readonly List<(Vector3? a, Vector3? b)> bisectionResult = new();
 
@@ -82,39 +77,7 @@ namespace HalfEdge {
                 return;
             }
 
-            combineCoplanarFacesEnumerator = null;
-            count = 0;
-
             halfEdgeMesh.CombineCoplanarFaces();
-        }
-
-        [Button("Combine Step")]
-        public void TestCombine() {
-            if (halfEdgeMesh == null) {
-                Debug.Log($"No mesh structure yet.");
-                return;
-            }
-
-            if (combineCoplanarFacesEnumerator == null) {
-                combineCoplanarFacesEnumerator = halfEdgeMesh.CombineCoplanarFacesEnumerable().GetEnumerator();
-                combineCoplanarFacesEnumerator.MoveNext();
-                ++count;
-            } else {
-                try {
-                    if (combineCoplanarFacesEnumerator.MoveNext()) {
-                        Debug.Log($"Iteration {count}");
-                        ++count;
-                    } else {
-                        Debug.Log($"Finished in {count} iterations.");
-                        combineCoplanarFacesEnumerator = null;
-                        count = 0;
-                    }
-                } catch (System.Exception e) {
-                    Debug.LogError(e);
-                    combineCoplanarFacesEnumerator = null;
-                    count = 0;
-                }
-            }
         }
 
         private void OnDrawGizmos() {
@@ -160,16 +123,16 @@ namespace HalfEdge {
                     if (a.HasValue && b.HasValue) {
                         Gizmos.color = Color.green;
                         Gizmos.DrawLine(a.Value, b.Value);
-                        Gizmos.DrawSphere(a.Value, 0.1f);
-                        Gizmos.DrawSphere(b.Value, 0.1f);
+                        Gizmos.DrawSphere(a.Value, 0.02f);
+                        Gizmos.DrawSphere(b.Value, 0.02f);
                     } else {
                         Gizmos.color = Color.red;
                         if (a.HasValue) {
-                            Gizmos.DrawSphere(a.Value, 0.1f);
+                            Gizmos.DrawSphere(a.Value, 0.02f);
                         }
 
                         if (b.HasValue) {
-                            Gizmos.DrawSphere(b.Value, 0.1f);
+                            Gizmos.DrawSphere(b.Value, 0.02f);
                         }
                     }
                 }

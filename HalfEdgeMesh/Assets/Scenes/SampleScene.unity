@@ -136,7 +136,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &125286579
 Transform:
   m_ObjectHideFlags: 0
@@ -205,6 +205,37 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 125286578}
   m_Mesh: {fileID: 4300000, guid: 2fda8706c04584f4582b91c0306485b4, type: 2}
+--- !u!1 &247281876
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 247281877}
+  m_Layer: 0
+  m_Name: New Edge Pos
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &247281877
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 247281876}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1, y: 0, z: 1.353}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &627889174
 GameObject:
   m_ObjectHideFlags: 0
@@ -550,25 +581,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2c832c77dcebbe8419fa8e00631f5478, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  meshFilter: {fileID: 2106269767}
+  meshFilter: {fileID: 125286582}
   halfEdgeMesh:
     vertices:
     - {x: 0, y: 0, z: 0}
     - {x: 1, y: 0, z: 0}
     - {x: 2, y: 0, z: 0}
-    - {x: 3, y: 0, z: 0}
     - {x: 0, y: 0, z: 1}
     - {x: 1, y: 0, z: 1}
     - {x: 2, y: 0, z: 1}
-    - {x: 3, y: 0, z: 1}
     - {x: 0, y: 0, z: 2}
     - {x: 1, y: 0, z: 2}
     - {x: 2, y: 0, z: 2}
-    - {x: 3, y: 0, z: 2}
-    - {x: 0, y: 0, z: 3}
-    - {x: 1, y: 0, z: 3}
-    - {x: 2, y: 0, z: 3}
-    - {x: 3, y: 0, z: 3}
+    - {x: 0, y: 0, z: 1.353}
+    - {x: 2, y: 0, z: 1.353}
     normals:
     - {x: 0, y: 1, z: 0}
     - {x: 0, y: 1, z: 0}
@@ -581,44 +607,23 @@ MonoBehaviour:
     - {x: 0, y: 1, z: 0}
     - {x: 0, y: 1, z: 0}
     - {x: 0, y: 1, z: 0}
-    - {x: 0, y: 1, z: 0}
-    - {x: 0, y: 1, z: 0}
-    - {x: 0, y: 1, z: 0}
-    - {x: 0, y: 1, z: 0}
-    - {x: 0, y: 1, z: 0}
     halfEdgesSerialized:
-    - Name: 35->17
-      Key: 35
+    - Name: 11->8
+      Key: 11
       Value:
-        Vertex: 11
-        Previous: 53
-        Next: 17
-        Twin: -1
-        Face: 35
-    - Name: 17->14
-      Key: 17
-      Value:
-        Vertex: 7
-        Previous: 35
-        Next: 14
-        Twin: -1
-        Face: 35
-    - Name: 14->8
-      Key: 14
-      Value:
-        Vertex: 3
-        Previous: 17
+        Vertex: 5
+        Previous: 25
         Next: 8
         Twin: -1
-        Face: 35
+        Face: 25
     - Name: 8->2
       Key: 8
       Value:
         Vertex: 2
-        Previous: 14
+        Previous: 11
         Next: 2
         Twin: -1
-        Face: 35
+        Face: 25
     - Name: 2->0
       Key: 2
       Value:
@@ -626,69 +631,106 @@ MonoBehaviour:
         Previous: 8
         Next: 0
         Twin: -1
-        Face: 35
-    - Name: 0->18
+        Face: 25
+    - Name: 0->12
       Key: 0
       Value:
         Vertex: 0
         Previous: 2
-        Next: 18
+        Next: 12
         Twin: -1
-        Face: 35
-    - Name: 18->36
-      Key: 18
+        Face: 25
+    - Name: 12->24
+      Key: 12
       Value:
-        Vertex: 4
+        Vertex: 3
         Previous: 0
-        Next: 36
+        Next: 24
         Twin: -1
-        Face: 35
-    - Name: 36->40
-      Key: 36
+        Face: 25
+    - Name: 24->25
+      Key: 24
       Value:
-        Vertex: 8
-        Previous: 18
-        Next: 40
+        Vertex: 9
+        Previous: 12
+        Next: 25
         Twin: -1
-        Face: 35
-    - Name: 40->46
-      Key: 40
+        Face: 25
+    - Name: 25->11
+      Key: 25
       Value:
-        Vertex: 12
-        Previous: 36
-        Next: 46
+        Vertex: 10
+        Previous: 24
+        Next: 11
         Twin: -1
-        Face: 35
-    - Name: 46->52
-      Key: 46
+        Face: 25
+    - Name: 25->11
+      Key: 25
       Value:
-        Vertex: 13
-        Previous: 40
-        Next: 52
+        Vertex: 10
+        Previous: 24
+        Next: 11
         Twin: -1
-        Face: 35
-    - Name: 52->53
-      Key: 52
+        Face: 25
+    - Name: 11->8
+      Key: 11
       Value:
-        Vertex: 14
-        Previous: 46
-        Next: 53
+        Vertex: 5
+        Previous: 25
+        Next: 8
         Twin: -1
-        Face: 35
-    - Name: 53->35
-      Key: 53
+        Face: 25
+    - Name: 8->2
+      Key: 8
       Value:
-        Vertex: 15
-        Previous: 52
-        Next: 35
+        Vertex: 2
+        Previous: 11
+        Next: 2
         Twin: -1
-        Face: 35
+        Face: 25
+    - Name: 2->0
+      Key: 2
+      Value:
+        Vertex: 1
+        Previous: 8
+        Next: 0
+        Twin: -1
+        Face: 25
+    - Name: 0->12
+      Key: 0
+      Value:
+        Vertex: 0
+        Previous: 2
+        Next: 12
+        Twin: -1
+        Face: 25
+    - Name: 12->24
+      Key: 12
+      Value:
+        Vertex: 3
+        Previous: 0
+        Next: 24
+        Twin: -1
+        Face: 25
+    - Name: 24->25
+      Key: 24
+      Value:
+        Vertex: 9
+        Previous: 12
+        Next: 25
+        Twin: -1
+        Face: 25
     facesSerialized:
-    - Name: 35
-      Index: 35
-    halfEdgesInFaceToDraw: 23000000110000000e0000000800000002000000000000001200000024000000280000002e0000003400000035000000
+    - Name: 11
+      Index: 11
+    - Name: 25
+      Index: 25
+    halfEdgesInFaceToDraw: 190000000b0000000800000002000000000000000c00000018000000
   labelHalfEdges: 1
   labelFaces: 0
+  plane: {fileID: 247281877}
+  splitEdge: 17
+  newEdgePos: {fileID: 0}
 --- !u!4 &825876907
 Transform:
   m_ObjectHideFlags: 0
@@ -1007,7 +1049,7 @@ GameObject:
   - component: {fileID: 1843518793}
   - component: {fileID: 1843518792}
   m_Layer: 0
-  m_Name: GameObject
+  m_Name: Mesh Generator
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1025,8 +1067,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9093946a48efced4b9716d6cbed8ab03, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rows: 3
-  columns: 3
+  rows: 2
+  columns: 2
 --- !u!4 &1843518793
 Transform:
   m_ObjectHideFlags: 0
@@ -1059,7 +1101,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2106269765
 Transform:
   m_ObjectHideFlags: 0
@@ -1136,3 +1178,4 @@ SceneRoots:
   - {fileID: 705507995}
   - {fileID: 825876907}
   - {fileID: 1843518793}
+  - {fileID: 247281877}
