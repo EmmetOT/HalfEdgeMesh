@@ -8,6 +8,8 @@ using UnityEngine;
 namespace HalfEdge {
     [Serializable]
     public class HalfEdgeMesh : ISerializationCallbackReceiver {
+        private const int MaxIterations = 100;
+        
         [SerializeField]
         private List<Vector3> vertices;
 
@@ -57,6 +59,7 @@ namespace HalfEdge {
 
         /// Enumerate the face indices of all faces adjacent to the face with the given index.
         public IEnumerable<int> GetAdjacentFaces(int faceIndex) {
+            var iterationCount = MaxIterations;
             var currentIndex = faceIndex;
             do {
                 var he = halfEdges[currentIndex];
@@ -66,7 +69,11 @@ namespace HalfEdge {
                 }
 
                 currentIndex = he.Next;
-            } while (currentIndex != faceIndex);
+            } while (currentIndex != faceIndex && iterationCount-- > 0);
+            
+            if (iterationCount <= 0) {
+                Debug.LogError("Too many iterations in GetAdjacentFaces. Aborting.");
+            }
         }
 
         // Create a half-edge for each edge in the mesh.
@@ -138,23 +145,25 @@ namespace HalfEdge {
                 }
             }
         }
+        
+        public void Bisect(Vector3 normal, Vector3 position) {
+            Bisect(new Plane(normal, position));
+        }
 
-        public void Bisect(Plane plane, List<(Vector3? a, Vector3? b)> result) {
+        public void Bisect(Plane plane) {
+            //plane = plane.Jitter();
             List<int> facesToAdd = new();
             foreach (var face in faces) {
-                BisectFace(plane, face, facesToAdd, out var a, out var b);
-                if (a.HasValue || b.HasValue) {
-                    result.Add((a, b));
-                }
+                BisectFace(plane, face, facesToAdd);
             }
 
             faces.AddRange(facesToAdd);
         }
-
+        
         /// If the face is intersected by the plane, bisect it, creating two new faces.
-        private void BisectFace(Plane plane, int faceIndex, List<int> facesToAdd, out Vector3? aVertex, out Vector3? bVertex) {
-            aVertex = null;
-            bVertex = null;
+        private void BisectFace(Plane plane, int faceIndex, List<int> facesToAdd) {
+            Vector3? aVertex = null;
+            Vector3? bVertex = null;
 
             Vector3? aNormal = null;
             Vector3? bNormal = null;
@@ -175,7 +184,7 @@ namespace HalfEdge {
                 if (!plane.TryIntersect(vertices[thisEdge.Vertex], vertices[nextEdge.Vertex], out var pointOfIntersection, out var t)) {
                     continue;
                 }
-
+                
                 if (aVertex == null) {
                     aVertex = pointOfIntersection;
                     aNormal = Vector3.Lerp(normals[thisEdge.Vertex], normals[nextEdge.Vertex], t);
@@ -215,13 +224,19 @@ namespace HalfEdge {
 
             facesToAdd.Add(edgeIndexE);
 
+            var iterationCount = MaxIterations;
+            
             // Set all the edges following D to the new face
             var currentIndex = heC.Next;
             do {
                 var he = halfEdges[currentIndex];
                 halfEdges[currentIndex] = new HalfEdge { Face = edgeIndexE, Next = he.Next, Previous = he.Previous, Vertex = he.Vertex, Twin = he.Twin };
                 currentIndex = he.Next;
-            } while (currentIndex != edgeIndexE);
+            } while (currentIndex != edgeIndexE && iterationCount-- > 0);
+            
+            if (iterationCount <= 0) {
+                Debug.LogError("Too many iterations in BisectFace. Aborting.");
+            }
         }
 
         /// Given an edge index, split it into two edges, with the new vertex in between.
@@ -306,11 +321,16 @@ namespace HalfEdge {
         }
 
         private IEnumerable<int> EnumerateFaceEdges(int faceIndex) {
+            var iterationCount = MaxIterations;
             var currentIndex = faceIndex;
             do {
                 yield return currentIndex;
                 currentIndex = halfEdges[currentIndex].Next;
-            } while (currentIndex != faceIndex);
+            } while (currentIndex != faceIndex && iterationCount-- > 0);
+            
+            if (iterationCount <= 0) {
+                Debug.LogError("Too many iterations in EnumerateFaceEdges. Aborting.");
+            }
         }
 
         private void CollapseEdge(int id) {
@@ -429,18 +449,17 @@ namespace HalfEdge {
 
             var centroid = Vector3.zero;
 
-            var count = 0;
+            var iterationCount = MaxIterations;
             var currentIndex = faceIndex;
             do {
                 var he = halfEdges[currentIndex];
                 halfEdgesInFaceToDraw.Add(currentIndex);
                 centroid += vertices[he.Vertex];
                 currentIndex = he.Next;
-            } while (currentIndex != faceIndex && count++ < 100);
-
-            if (count >= 100) {
-                Debug.LogError($"Face {faceIndex} has more than 100 vertices, or does not loop. Aborting drawing.");
-                return;
+            } while (currentIndex != faceIndex && iterationCount-- > 0);
+            
+            if (iterationCount <= 0) {
+                Debug.LogError("Too many iterations in DrawFace. Aborting.");
             }
 
             Debug.Assert(halfEdgesInFaceToDraw.Count >= 3, "Face must have at least 3 vertices");
@@ -521,13 +540,18 @@ namespace HalfEdge {
             foreach (var face in faces) {
                 facesSerialized.Add(new SerializableFace(face));
 
+                var iterationCount = MaxIterations;
                 // Serialize the half edges by face
                 var currentIndex = face;
                 do {
                     var he = halfEdges[currentIndex];
                     halfEdgesSerialized.Add(new SerializableHalfEdge(currentIndex, he));
                     currentIndex = he.Next;
-                } while (currentIndex != face);
+                } while (currentIndex != face && iterationCount-- > 0);
+                
+                if (iterationCount <= 0) {
+                    Debug.LogError("Too many iterations in UpdateSerialization. Aborting.");
+                }
             }
         }
 

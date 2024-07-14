@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using NaughtyAttributes;
 using UnityEditor;
 using UnityEngine;
@@ -26,33 +24,47 @@ namespace HalfEdge {
 
         [SerializeField]
         private Transform newEdgePos;
-        
-        [Button("Split Edge")]
-        public void SplitEdge() {
-            if (halfEdgeMesh == null) {
-                Debug.Log($"No mesh structure yet.");
-                return;
-            }
 
-            if (splitEdge < 0) {
-                Debug.Log($"No edge to split.");
-                return;
-            }
-            
-            if (newEdgePos == null) {
-                Debug.Log($"No new edge position.");
-                return;
-            }
-
-            halfEdgeMesh.SplitEdge(splitEdge, newEdgePos.position, newEdgePos.up);
+        [Button("Start Bisection Test")]
+        public void BisectionTest() {
+            halfEdgeMesh = new HalfEdgeMesh(meshFilter.sharedMesh);
+            halfEdgeMesh.CombineCoplanarFaces();
         }
-        
+
+        [Button("Bisection Right")]
+        public void BisectionRight() {
+            halfEdgeMesh.Bisect(Vector3.right, new Vector3(1f, 0f, 1f));
+        }
+
+        [Button("Bisection Forward")]
+        public void BisectionForward() {
+            halfEdgeMesh.Bisect(Vector3.forward, new Vector3(1f, 0f, 1f));
+        }
+
+        [Button("Print Plane Info")]
+        public void PrintPlaneInfo() {
+            if (plane == null) {
+                Debug.Log($"No plane to print.");
+                return;
+            }
+
+            Debug.Log($"Plane position: {plane.position}, forward: {plane.forward}, distance: {-Vector3.Dot(plane.forward, plane.position)}");
+        }
+
         [Button("Test")]
         public void Test() {
             halfEdgeMesh = new HalfEdgeMesh(meshFilter.sharedMesh);
         }
 
-        private readonly List<(Vector3? a, Vector3? b)> bisectionResult = new();
+        [Button("Combine")]
+        public void Combine() {
+            if (halfEdgeMesh == null) {
+                Debug.Log($"No mesh structure yet.");
+                return;
+            }
+
+            halfEdgeMesh.CombineCoplanarFaces();
+        }
 
         [Button("Bisect")]
         public void Bisect() {
@@ -66,18 +78,12 @@ namespace HalfEdge {
                 return;
             }
 
-            bisectionResult.Clear();
-            halfEdgeMesh.Bisect(new Plane(plane.forward, plane.position), bisectionResult);
+            UnityEngine.Debug.Log($"Creating a plane from position {FormatVector3(plane.position)} and forward {FormatVector3(plane.forward)}.");
+            halfEdgeMesh.Bisect(new Plane(plane.forward, plane.position));
         }
 
-        [Button("Combine All")]
-        public void CombineNow() {
-            if (halfEdgeMesh == null) {
-                Debug.Log($"No mesh structure yet.");
-                return;
-            }
-
-            halfEdgeMesh.CombineCoplanarFaces();
+        public static string FormatVector3(Vector3 vector) {
+            return $"({vector.x:F7}, {vector.y:F7}, {vector.z:F7})";
         }
 
         private void OnDrawGizmos() {
@@ -85,23 +91,11 @@ namespace HalfEdge {
                 return;
             }
 
-            // if (testFace >= 0) {
-            //     var faces = halfEdgeMesh.Faces;
-            //     if (testFace < faces.Count) {
-            //         var face = faces[testFace];
-            //         halfEdgeMesh.DrawFace(face, Color.red, true);
-            //         
-            //         foreach (var adjacentFace in halfEdgeMesh.GetAdjacentFaces(face)) {
-            //             halfEdgeMesh.DrawFace(adjacentFace, Color.black, true);
-            //         }
-            //     }  
-            // } else {
             halfEdgeMesh.DrawGizmos(labelHalfEdges, labelFaces);
-            //}
 
-            if (plane != null) {
+            if (plane != null && plane.gameObject.activeInHierarchy) {
                 var col = Color.Lerp(Color.blue, Color.clear, 0.2f);
-                
+
                 Gizmos.color = col;
                 Gizmos.DrawRay(plane.position, plane.forward);
 
@@ -116,26 +110,6 @@ namespace HalfEdge {
                 Handles.zTest = UnityEngine.Rendering.CompareFunction.LessEqual;
                 Handles.color = col;
                 Handles.DrawAAConvexPolygon(vertices);
-            }
-
-            if (!bisectionResult.IsNullOrEmpty()) {
-                foreach (var (a, b) in bisectionResult) {
-                    if (a.HasValue && b.HasValue) {
-                        Gizmos.color = Color.green;
-                        Gizmos.DrawLine(a.Value, b.Value);
-                        Gizmos.DrawSphere(a.Value, 0.02f);
-                        Gizmos.DrawSphere(b.Value, 0.02f);
-                    } else {
-                        Gizmos.color = Color.red;
-                        if (a.HasValue) {
-                            Gizmos.DrawSphere(a.Value, 0.02f);
-                        }
-
-                        if (b.HasValue) {
-                            Gizmos.DrawSphere(b.Value, 0.02f);
-                        }
-                    }
-                }
             }
         }
     }

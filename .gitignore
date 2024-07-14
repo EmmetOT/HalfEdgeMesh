@@ -62,3 +62,7 @@ Ignore
 /[Hh]alf[Ee]dge[Mm]esh/Logs
 /[Hh]alf[Ee]dge[Mm]esh/Logs.meta
 /[Hh]alf[Ee]dge[Mm]esh/.vs
+HalfEdgeMesh/.idea/.idea.HalfEdgeMesh/.idea/vcs.xml
+HalfEdgeMesh/.idea/.idea.HalfEdgeMesh/.idea/indexLayout.xml
+HalfEdgeMesh/.idea/.idea.HalfEdgeMesh/.idea/encodings.xml
+HalfEdgeMesh/UserSettings/Layouts/default-6000.dwlt

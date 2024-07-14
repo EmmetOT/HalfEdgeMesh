@@ -1312,6 +1312,19 @@ namespace HalfEdge {
                 return value >= from || value <= to;
         }
 
+        public static float Jitter(this float f) {
+            const float range = 0.01f;
+            return f + UnityEngine.Random.Range(-range, range);
+        }
+
+        public static Vector3 Jitter(this Vector3 v) {
+            return new Vector3(v.x.Jitter(), v.y.Jitter(), v.z.Jitter());
+        }
+
+        public static Plane Jitter(this Plane p) {
+            return new Plane(p.normal.Jitter(), p.distance.Jitter());
+        }
+        
         public static bool TryIntersect(this Plane plane, Vector3 lineSegmentStart, Vector3 lineSegmentEnd, out Vector3 intersectionPoint, out float t) {
             intersectionPoint = Vector3.zero; // Initialize the out parameter
             t = 0f;
@@ -1332,7 +1345,7 @@ namespace HalfEdge {
             t = startDistance / (startDistance - endDistance);
 
             // Check if the intersection point lies within the bounds of the line segment
-            if (t >= 0.0f && t <= 1.0f) {
+            if (t > 0.0f && t <= 1.0f) {
                 // Calculate the intersection point
                 intersectionPoint = lineSegmentStart + t * lineDirection;
                 return true;
